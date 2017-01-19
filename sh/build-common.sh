@@ -54,5 +54,5 @@ docker build \
 echo "Done."
 echo "SSH username: $SSH_USER"
 if [[ "0" == "$SSH_PROMPT_PASSWORD" ]]; then
-    echo "SSH temp password: $SSH_PASSWORD"
+    echo "SSH password: $SSH_PASSWORD"
 fi
