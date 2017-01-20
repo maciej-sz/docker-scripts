@@ -48,6 +48,6 @@ if [[ "1" == "$BUILD" ]]; then
     ./build.sh
 fi
 
-docker run -p ${SSH_PORT}:22 --name ${DOCKER_CONTAINER_NAME} -dit oxio/ubuntu-base
+docker run -p ${SSH_PORT}:22 --name ${DOCKER_CONTAINER_NAME} -dit ${DOCKER_IMAGE_TAG}
 
 echo "Running: ${DOCKER_CONTAINER_NAME}"
