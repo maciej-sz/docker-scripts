@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# Required variables:
-# - DOCKER_IMAGE_TAG
-
 set -e
 
 DOCKER_BUILD_ARGS=""
@@ -59,6 +56,10 @@ docker build \
 
 echo "Built: ${DOCKER_IMAGE_TAG}"
 echo "SSH username: $SSH_USER"
-if [[ "0" == "$SSH_PROMPT_PASSWORD" ]]; then
-    echo "SSH password: $SSH_PASSWORD"
+SSH_DISPLAY_PASSWORD=${SSH_PASSWORD}
+if [[ "0" != "$SSH_PROMPT_PASSWORD" ]]; then
+    LEN=${#SSH_PASSWORD}
+    SSH_DISPLAY_PASSWORD=" (provided)"
+    for ((i=0; i<$LEN; i++)); do SSH_DISPLAY_PASSWORD="*${SSH_DISPLAY_PASSWORD}"; done
 fi
+echo "SSH password: $SSH_DISPLAY_PASSWORD"
