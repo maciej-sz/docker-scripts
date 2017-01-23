@@ -71,20 +71,18 @@ if [[ "" != "${SSH_PORT}" ]]; then
     ssh-keygen -f ~/.ssh/known_hosts -R "${SSH_URL}"
 fi
 
-#sleep 1
-#if [[ "" = $(ssh-keygen -F "${SSH_URL}") ]]; then
-#    echo "Adding known host"
-#    ssh-keyscan -H -p "${SSH_PORT}" localhost >> ~/.ssh/known_hosts
-#fi
-
 if [[ "1" == "${LOGIN}" ]]; then
-    if [[ "" = $(which sshpass) ]]; then echo "Installing sshpass (locally)..."; sudo apt-get install -y sshpass; fi
     echo "Logging in..."
     if [[ "" == "${SSH_USER}" || "" == "${SSH_PORT}" ]]; then
         echo "ERROR: Cannot login: user or port not provided" 1>&2
         exit 1
     fi
-    sleep 1
+    if [[ "" = $(which sshpass) ]]; then
+        echo "Installing sshpass (locally)...";
+        sudo apt-get install -y sshpass;
+    else
+        sleep 1
+    fi
     sshpass -p "${SSH_PASSWORD}" ssh -o StrictHostKeyChecking=no -p "${SSH_PORT}" "${SSH_USER}@localhost"
     echo "Good bye!"
 fi
