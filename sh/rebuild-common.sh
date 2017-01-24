@@ -6,9 +6,9 @@ STOP_SCRIPT="./$(dirname $0)/stop.sh"
 BUILD_SCRIPT="./$(dirname $0)/build.sh"
 START_SCRIPT="./$(dirname $0)/start.sh"
 
-if [[ ! -x "${STOP_SCRIPT}" ]]; then echo "ERROR: Missing stop script"; exit 2; fi
-if [[ ! -x "${BUILD_SCRIPT}" ]]; then echo "ERROR: Missing build script"; exit 2; fi
-if [[ ! -x "${START_SCRIPT}" ]]; then echo "ERROR: Missing start script"; exit 2; fi
+if [[ ! -x "${STOP_SCRIPT}" ]]; then echo "ERROR: Missing stop script" 1>&2; exit 2; fi
+if [[ ! -x "${BUILD_SCRIPT}" ]]; then echo "ERROR: Missing build script" 1>&2; exit 2; fi
+if [[ ! -x "${START_SCRIPT}" ]]; then echo "ERROR: Missing start script" 1>&2; exit 2; fi
 
 "./${STOP_SCRIPT}" >/dev/null 2>&1 &
 

@@ -2,6 +2,8 @@
 
 set -e
 
+BUILD_PARAMS_SCRIPT="$(dirname $0)/../config/build_params.sh"
+
 LIBS_DIR="/opt/maciej-sz/bash-scripts"; if [[ ! -r "$LIBS_DIR" ]]; then echo "Installing Bash libs..."; sudo git clone https://github.com/maciej-sz/bash-scripts.git "$LIBS_DIR/"; fi
 . "$LIBS_DIR/lib/cast-bool.sh"
 
@@ -16,6 +18,7 @@ TMP_AUTHORIZED_KEYS_FILE="${TMP_AUTHORIZED_KEYS_DIR}/authorized_keys"
 mkdir -p "$TMP_AUTHORIZED_KEYS_DIR"
 touch "${TMP_AUTHORIZED_KEYS_FILE}"
 echo > "${TMP_AUTHORIZED_KEYS_FILE}"
+echo "#!/usr/bin/env bash" > ${BUILD_PARAMS_SCRIPT}
 
 while test ${#} -gt 0
 do
@@ -33,7 +36,7 @@ do
             SSH_PROMPT_PASSWORD=$(castBool ${arg_val})
             continue;;
         --hostname)
-            CONTAINER_HOSTNAME=${arg_val}
+            echo "DOCKER_CONTAINER_HOSTNAME=\"${arg_val}\"" >> ${BUILD_PARAMS_SCRIPT}
             continue;;
         --ssh-authorize-host)
             if [[ "1" == $(castBool ${arg_val}) ]]; then
@@ -56,18 +59,15 @@ if [[ "1" == "$SSH_PROMPT_PASSWORD" ]]; then
     echo
 fi
 
-echo $DOCKER_BUILD_ARGS
-
 docker build \
-    -t ${DOCKER_IMAGE_TAG}:latest \
+    -t ${DOCKER_IMAGE_NAME}:latest \
     --build-arg SSH_USER=${SSH_USER} \
     --build-arg SSH_PASSWORD=${SSH_PASSWORD} \
-    --build-arg CONTAINER_HOSTNAME=${CONTAINER_HOSTNAME} \
     -f Dockerfile \
     ${DOCKER_BUILD_ARGS} \
     .
 
-echo "Built: ${DOCKER_IMAGE_TAG}"
+echo "Built: ${DOCKER_IMAGE_NAME}"
 echo "SSH username: $SSH_USER"
 SSH_DISPLAY_PASSWORD=${SSH_PASSWORD}
 if [[ "0" != "$SSH_PROMPT_PASSWORD" ]]; then

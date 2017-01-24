@@ -30,6 +30,17 @@ if [[ "0" == "$SSH_PORT_PROVIDED" ]]; then
     read -p "SSH port: " SSH_PORT
 fi
 
-docker run -p ${SSH_PORT}:22 --name ${DOCKER_CONTAINER_NAME} -dit ${DOCKER_IMAGE_TAG}
+echo -n "Starting... "
 
-echo "Running: ${DOCKER_CONTAINER_NAME}"
+RUN_ARGS=""
+RUN_ARGS="${RUN_ARGS} -p ${SSH_PORT}:22"
+RUN_ARGS="${RUN_ARGS} --name ${DOCKER_CONTAINER_NAME}"
+RUN_ARGS="${RUN_ARGS} --cap-add SYS_ADMIN"
+if [[ "" != "${DOCKER_CONTAINER_HOSTNAME}" ]]; then RUN_ARGS="${RUN_ARGS} -h ${DOCKER_CONTAINER_HOSTNAME}"; fi
+RUN_ARGS="${RUN_ARGS} -dit ${DOCKER_IMAGE_NAME}"
+
+echo $RUN_ARGS
+
+docker run ${RUN_ARGS}
+
+echo "Started: ${DOCKER_CONTAINER_NAME}"
