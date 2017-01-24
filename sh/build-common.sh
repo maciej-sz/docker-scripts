@@ -6,6 +6,7 @@ BUILD_PARAMS_SCRIPT="$(dirname $0)/../config/build_params.sh"
 
 LIBS_DIR="/opt/maciej-sz/bash-scripts"; if [[ ! -r "$LIBS_DIR" ]]; then echo "Installing Bash libs..."; sudo git clone https://github.com/maciej-sz/bash-scripts.git "$LIBS_DIR/"; fi
 . "$LIBS_DIR/lib/cast-bool.sh"
+. "$LIBS_DIR/lib/config-file-update.sh"
 
 DOCKER_BUILD_ARGS=""
 SSH_USER_PROVIDED=0
@@ -18,7 +19,6 @@ TMP_AUTHORIZED_KEYS_FILE="${TMP_AUTHORIZED_KEYS_DIR}/authorized_keys"
 mkdir -p "$TMP_AUTHORIZED_KEYS_DIR"
 touch "${TMP_AUTHORIZED_KEYS_FILE}"
 echo > "${TMP_AUTHORIZED_KEYS_FILE}"
-echo "#!/usr/bin/env bash" > ${BUILD_PARAMS_SCRIPT}
 
 while test ${#} -gt 0
 do
@@ -36,7 +36,7 @@ do
             SSH_PROMPT_PASSWORD=$(castBool ${arg_val})
             continue;;
         --hostname)
-            echo "DOCKER_CONTAINER_HOSTNAME=\"${arg_val}\"" >> ${BUILD_PARAMS_SCRIPT}
+            configFileUpdate "DOCKER_CONTAINER_HOSTNAME" "${arg_val}" "${BUILD_PARAMS_SCRIPT}"
             continue;;
         --ssh-authorize-host)
             if [[ "1" == $(castBool ${arg_val}) ]]; then
