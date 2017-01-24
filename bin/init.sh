@@ -4,6 +4,7 @@ set -e
 
 LIBS_DIR="/opt/maciej-sz/bash-scripts"; if [[ ! -r "$LIBS_DIR" ]]; then echo "Installing Bash libs..."; sudo git clone https://github.com/maciej-sz/bash-scripts.git "$LIBS_DIR/"; fi
 . "$LIBS_DIR/lib/read-val-if-not-empty.sh"
+. "$LIBS_DIR/lib/prompt-yes-no.sh"
 
 TARGET_DIR=""
 IMAGE_NAME=""
@@ -82,6 +83,14 @@ PARENT_IMAGE_TAG=$(readValIfNotEmpty "Parent image tag" "${PARENT_IMAGE_TAG}" "l
 PROJECT_DIR="$(pwd)/${TARGET_DIR}"
 SOURCE_DIR="$(dirname $(readlink -f $0))/../project-structure"
 
+if [[ "" != $(ls -A "${PROJECT_DIR}") ]]; then
+    if [ ! $(promptyn "The directory \"${PROJECT_DIR}\" is not empty! Override?") ]; then
+        exit
+    else
+        echo "Overriding."
+    fi
+fi
+
 ENTRYPOINT_FILE="entrypoint_${IMAGE_NAME_TAIL}.sh";
 ENTRYPOINT_REL_FILE="scripts/${ENTRYPOINT_FILE}"
 ENTRYPOINT_ABS_FILE="${PROJECT_DIR}/${ENTRYPOINT_REL_FILE}"
@@ -101,26 +110,28 @@ echo >> "${PROJECT_DIR}/config/build_params.sh"
 echo "DOCKER_CONTAINER_HOSTNAME=\"${IMAGE_NAME_TAIL}\"" >> "${PROJECT_DIR}/config/build_params.sh"
 
 mkdir -p "${PROJECT_DIR}/scripts"
-touch ${ENTRYPOINT_ABS_FILE}
-touch ${ENTRYPOINT_ABS_SERVICES_FILE}
-chmod +x ${ENTRYPOINT_ABS_FILE}
-chmod +x ${ENTRYPOINT_ABS_SERVICES_FILE}
+touch "${ENTRYPOINT_ABS_FILE}"
+touch "${ENTRYPOINT_ABS_SERVICES_FILE}"
+chmod +x "${ENTRYPOINT_ABS_FILE}"
+chmod +x "${ENTRYPOINT_ABS_SERVICES_FILE}"
 
-echo "#!/usr/bin/env bash" > ${ENTRYPOINT_ABS_FILE}
-echo ". /opt/docker-scripts/entrypoint_${IMAGE_NAME_TAIL}_services.sh" >> ${ENTRYPOINT_ABS_FILE}
-echo ". /opt/docker-scripts/entrypoint_common-daemon.sh" >> ${ENTRYPOINT_ABS_FILE}
+echo "#!/usr/bin/env bash" > "${ENTRYPOINT_ABS_FILE}"
+echo ". /opt/docker-scripts/entrypoint_${IMAGE_NAME_TAIL}_services.sh" >> "${ENTRYPOINT_ABS_FILE}"
+echo ". /opt/docker-scripts/entrypoint_common-daemon.sh" >> "${ENTRYPOINT_ABS_FILE}"
 
-echo "#!/usr/bin/env bash" > ${ENTRYPOINT_ABS_SERVICES_FILE}
-echo ". /opt/docker-scripts/entrypoint_${PARENT_IMAGE_TAIL}_services.sh" >> ${ENTRYPOINT_ABS_SERVICES_FILE}
+echo "#!/usr/bin/env bash" > "${ENTRYPOINT_ABS_SERVICES_FILE}"
+echo ". /opt/docker-scripts/entrypoint_${PARENT_IMAGE_TAIL}_services.sh" >> "${ENTRYPOINT_ABS_SERVICES_FILE}"
 
 DOCKERFILE="${PROJECT_DIR}/Dockerfile"
-touch ${DOCKERFILE}
-echo "FROM ${PARENT_IMAGE_NAME}:${PARENT_IMAGE_TAG}" > ${DOCKERFILE}
-echo "COPY ${ENTRYPOINT_REL_FILE} /opt/docker-scripts/" >> ${DOCKERFILE}
-echo "COPY ${ENTRYPOINT_REL_SERVICES_FILE} /opt/docker-scripts/" >> ${DOCKERFILE}
-echo "ARG SSH_USER" >> ${DOCKERFILE}
-echo "ARG SSH_PASSWORD" >> ${DOCKERFILE}
-echo "RUN if [[ \"\" == \$(id -u \"\${SSH_USER}\") ]]; then useradd \"\$SSH_USER\" --shell /bin/bash --create-home; fi" >> ${DOCKERFILE}
-echo "RUN echo \"\${SSH_USER}:\${SSH_PASSWORD}\" | chpasswd" >> ${DOCKERFILE}
-echo "RUN gpasswd -a \"\$SSH_USER\" sudo" >> ${DOCKERFILE}
-echo "ENTRYPOINT exec /bin/bash -C '/opt/docker-scripts/${ENTRYPOINT_FILE}';" >> ${DOCKERFILE}
+touch "${DOCKERFILE}"
+echo "FROM ${PARENT_IMAGE_NAME}:${PARENT_IMAGE_TAG}" > "${DOCKERFILE}"
+echo "COPY ${ENTRYPOINT_REL_FILE} /opt/docker-scripts/" >> "${DOCKERFILE}"
+echo "COPY ${ENTRYPOINT_REL_SERVICES_FILE} /opt/docker-scripts/" >> "${DOCKERFILE}"
+echo "ARG SSH_USER" >> "${DOCKERFILE}"
+echo "ARG SSH_PASSWORD" >> "${DOCKERFILE}"
+echo "RUN if [[ \"\" == \$(id -u \"\${SSH_USER}\") ]]; then useradd \"\$SSH_USER\" --shell /bin/bash --create-home; fi" >> "${DOCKERFILE}"
+echo "RUN echo \"\${SSH_USER}:\${SSH_PASSWORD}\" | chpasswd" >> "${DOCKERFILE}"
+echo "RUN gpasswd -a \"\$SSH_USER\" sudo" >> "${DOCKERFILE}"
+echo "ENTRYPOINT exec /bin/bash -C '/opt/docker-scripts/${ENTRYPOINT_FILE}';" >> "${DOCKERFILE}"
+
+echo "Project ${IMAGE_NAME} initialized."
