@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 
+set -e
+
+. "$(dirname $0)/../config/script_params.sh"
+. "$(dirname $0)/../config/build_params.sh"
+
 LIBS_DIR="/opt/maciej-sz/bash-scripts"; if [[ ! -r "$LIBS_DIR" ]]; then echo "Installing Bash libs..."; sudo git clone https://github.com/maciej-sz/bash-scripts.git "$LIBS_DIR/"; fi
 . "$LIBS_DIR/lib/prompt-yes-no.sh"
 
-set -e
+
 
 SSH_PORT_PROVIDED=0
 SSH_PORT=0

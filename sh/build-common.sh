@@ -2,6 +2,8 @@
 
 set -e
 
+. "$(dirname $0)/../config/script_params.sh"
+
 BUILD_PARAMS_SCRIPT="$(dirname $0)/../config/build_params.sh"
 
 LIBS_DIR="/opt/maciej-sz/bash-scripts"; if [[ ! -r "$LIBS_DIR" ]]; then echo "Installing Bash libs..."; sudo git clone https://github.com/maciej-sz/bash-scripts.git "$LIBS_DIR/"; fi
