@@ -32,19 +32,15 @@ do
                 --Bssh-user)
                     SSH_USER=${arg_val}
                     continue;;
+                --Bssh-port)
+                    SSH_PORT=${arg_val}
+                    continue;;
                 *)
                     continue;;
             esac
             continue;;
         --R*)
             START_ARGS="$START_ARGS --${param:3}"
-            case ${arg_name} in
-                --Rssh-port)
-                    SSH_PORT=${arg_val}
-                    continue;;
-                *)
-                    continue;;
-            esac
             continue;;
         --login)
             LOGIN=1

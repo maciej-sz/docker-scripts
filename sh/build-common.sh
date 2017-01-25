@@ -58,6 +58,9 @@ do
         --hostname)
             configFileUpdate "DOCKER_CONTAINER_HOSTNAME" "${arg_val}" "${BUILD_PARAMS_SCRIPT}"
             continue;;
+        --ssh-port)
+            configFileUpdate "DOCKER_SSH_PORT" "${arg_val}" "${BUILD_PARAMS_SCRIPT}"
+            continue;;
         --ssh-authorize-host)
             if [[ "1" == $(castBool ${arg_val}) ]]; then
                 cat ~/.ssh/id_rsa.pub >> "${TMP_AUTHORIZED_KEYS_FILE}"
