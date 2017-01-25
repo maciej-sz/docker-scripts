@@ -5,12 +5,14 @@ set -e
 LIBS_DIR="/opt/maciej-sz/bash-scripts"; if [[ ! -r "$LIBS_DIR" ]]; then echo "Installing Bash libs..."; sudo git clone https://github.com/maciej-sz/bash-scripts.git "$LIBS_DIR/"; fi
 . "$LIBS_DIR/lib/read-val-if-not-empty.sh"
 . "$LIBS_DIR/lib/prompt-yes-no.sh"
+. "$LIBS_DIR/lib/cast-bool.sh"
 
 TARGET_DIR=""
 IMAGE_NAME=""
 PARENT_IMAGE_NAME=""
 PARENT_IMAGE_TAG=""
 CONTAINER_NAME=""
+FORCE=""
 
 while test ${#} -gt 0
 do
@@ -34,6 +36,9 @@ do
             continue;;
         --parent-image-tag)
             PARENT_IMAGE_TAG=${arg_val}
+            continue;;
+        --force)
+            FORCE=$(castBool ${arg_val})
             continue;;
         *)
             echo "ERROR: Unrecognized parameter: $arg_name" 1>&2
@@ -84,7 +89,9 @@ PROJECT_DIR="$(pwd)/${TARGET_DIR}"
 SOURCE_DIR="$(dirname $(readlink -f $0))/../project-structure"
 
 if [[ "" != $(ls -A "${PROJECT_DIR}") ]]; then
-    if [ ! $(promptyn "The directory \"${PROJECT_DIR}\" is not empty! Override?") ]; then
+    if [[ "1" == "${FORCE}" ]]; then
+        echo "Overriding."
+    elif [ ! $(promptyn "The directory \"${PROJECT_DIR}\" is not empty! Override?") ]; then
         exit
     else
         echo "Overriding."
