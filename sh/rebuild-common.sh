@@ -57,7 +57,7 @@ done
 echo "Waiting for old container to stop..."
 wait
 
-"./${START_SCRIPT}" \
+. "${START_SCRIPT}" \
     ${START_ARGS}
 
 SSH_URL="[localhost]:${SSH_PORT}"
