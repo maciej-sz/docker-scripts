@@ -43,17 +43,20 @@ do
             HIDE_SSH_PASSWORD=1
             continue;;
         --read-stored-ssh-password)
+            HIDE_SSH_PASSWORD=1
             if [[ "" == ${arg_val} ]]; then
                 arg_val="/tmp/$(slugifyVariableName ${DOCKER_CONTAINER_NAME})_ssh_password"
             fi
             if [[ -r "${arg_val}" ]]; then
                 SSH_PASSWORD=$(cat "${arg_val}")
+            else
+                SSH_PASSWORD=""
             fi
             if [[ "" == ${SSH_PASSWORD} ]]; then
-                echo "Missing value for ssh password variable: ${arg_val}" 1>&2
+                echo "ERROR: Missing ssh password storage: ${arg_val}" 1>&2
+                echo "       Use the store-ssh-password.sh script to generate the missing storage." 1>&2
                 exit 1
             fi
-            HIDE_SSH_PASSWORD=1
             continue;;
         --hostname)
             configFileUpdate "DOCKER_CONTAINER_HOSTNAME" "${arg_val}" "${BUILD_PARAMS_SCRIPT}"
