@@ -2,17 +2,17 @@
 
 set -e
 
-LIBS_DIR="/opt/maciej-sz/bash-scripts"; if [[ ! -r "$LIBS_DIR" ]]; then echo "Installing Bash libs..."; sudo git clone https://github.com/maciej-sz/bash-scripts.git "$LIBS_DIR/"; fi
-. "$LIBS_DIR/lib/read-val-if-not-empty.sh"
-. "$LIBS_DIR/lib/prompt-yes-no.sh"
-. "$LIBS_DIR/lib/cast-bool.sh"
+function show_usage() {
+    echo "Usage: $(basename $0) [--force] targetdir source"
+}
 
 TARGET_DIR=""
-IMAGE_NAME=""
-PARENT_IMAGE_NAME=""
-PARENT_IMAGE_TAG=""
-CONTAINER_NAME=""
-FORCE=""
+SOURCE_REPO=""
+SOURCE_DIR=""
+SOURCE=""
+FORCE=0
+
+echo ${@}
 
 while test ${#} -gt 0
 do
@@ -22,123 +22,56 @@ do
     arg_name=${parts[0]}
     arg_val=${parts[1]}
     case ${arg_name} in
-        --target-dir)
-            TARGET_DIR=${arg_val}
-            continue;;
-        --image-name)
-            IMAGE_NAME=${arg_val}
-            continue;;
-        --container-name)
-            CONTAINER_NAME=${arg_val}
-            continue;;
-        --parent-image-name)
-            PARENT_IMAGE_NAME=${arg_val}
-            continue;;
-        --parent-image-tag)
-            PARENT_IMAGE_TAG=${arg_val}
-            continue;;
         --force)
-            FORCE=$(castBool ${arg_val})
+            FORCE=1
+            continue;;
+        -*)
+            echo $(show_usage) 1>&2
+            exit 1
             continue;;
         *)
-            echo "ERROR: Unrecognized parameter: $arg_name" 1>&2
-            exit 1
+            if [[ "" == "${TARGET_DIR}" ]]; then
+                TARGET_DIR=${param}
+            elif [[ "" == "${SOURCE}" ]]; then
+                SOURCE=${param}
+            else
+                echo $(show_usage) 1>&2
+                exit 1
+            fi
+            continue;;
     esac
 done
 
-function readSlashTail() {
-    NAME=$1
-    MSG=$2
-    DEFAULT=$3
+case ${SOURCE} in
+    ssh:*|http:*)
+        SOURCE_REPO=${SOURCE};;
+    *)
+        SOURCE_DIR=${SOURCE};;
+esac
 
-    if [[ "" != "${DEFAULT}" ]]; then MSG="${MSG} (default: ${DEFAULT})"; fi
-    IFS="/" read -r -a PARTS <<< "${NAME}"
-    if [[ 2 != ${#PARTS[@]} ]]; then
-        while true; do
-            read -p "${MSG}: " NAME;
-            IFS="/" read -r -a PARTS <<< "${NAME}"
-            if [[ 2 == ${#PARTS[@]} ]]; then
-                break
-            elif [[ "" == "${NAME}" && "" != "${DEFAULT}" ]]; then
-                echo ${DEFAULT}
-                break
-            else
-                echo "Name must contain slash"
-            fi
-        done
-    fi
-    echo ${NAME}
-}
-
-function getSlashNameTail() {
-    IFS="/" read -r -a PARTS <<< "${1}"
-    echo "${PARTS[1]}"
-}
-
-if [[ "" == "${TARGET_DIR}" ]]; then echo "Error: missing --target-dir parameter" 1>&2; exit 1; fi
-if [[ "" == "${CONTAINER_NAME}" ]]; then read -p "Container name (eg. acme_ubuntu_jenkins): " CONTAINER_NAME; fi
-
-IMAGE_NAME=$(readSlashTail "${IMAGE_NAME}" "Image tag (eg. acme/ubuntu-jenkins)")
-IMAGE_NAME_TAIL=$(getSlashNameTail ${IMAGE_NAME})
-
-PARENT_IMAGE_NAME=$(readSlashTail "${PARENT_IMAGE_NAME}" "Parent image name" "oxio/ubuntu-base")
-PARENT_IMAGE_TAIL=$(getSlashNameTail ${PARENT_IMAGE_NAME})
-PARENT_IMAGE_TAG=$(readValIfNotEmpty "Parent image tag" "${PARENT_IMAGE_TAG}" "latest")
-
-PROJECT_DIR="$(pwd)/${TARGET_DIR}"
-SOURCE_DIR="$(dirname $(readlink -f $0))/../project-structure"
-
-if [[ "" != $(ls -A "${PROJECT_DIR}") ]]; then
-    if [[ "1" == "${FORCE}" ]]; then
-        echo "Overriding."
-    elif [ ! $(promptyn "The directory \"${PROJECT_DIR}\" is not empty! Override?") ]; then
-        exit
-    else
-        echo "Overriding."
-    fi
+if [[ "" != "${SOURCE_REPO}" ]]; then
+    SOURCE_DIR="/tmp/dockerctl-cache/$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
+    mkdir -p "${SOURCE_DIR}"
+    cd "${SOURCE_DIR}"
+    git clone "${SOURCE_REPO}" .
+    cd "${PWD}"
+elif [[ "" == "${SOURCE_DIR}" ]]; then
+    echo $(show_usage) 1>&2
+    exit 1
 fi
 
-ENTRYPOINT_FILE="entrypoint_${IMAGE_NAME_TAIL}.sh";
-ENTRYPOINT_REL_FILE="scripts/${ENTRYPOINT_FILE}"
-ENTRYPOINT_ABS_FILE="${PROJECT_DIR}/${ENTRYPOINT_REL_FILE}"
+if [[ ! -w "${TARGET_DIR}" ]]; then
+    mkdir -p "${TARGET_DIR}"
+elif [[ "0" == "${FORCE}" && "" != "$(ls -A ${TARGET_DIR})" ]]; then
+    echo "ERROR: Target directory is not empty: ${TARGET_DIR}" 1>&2
+    exit 1
+fi
 
-ENTRYPOINT_SERVICES_FILE="entrypoint_${IMAGE_NAME_TAIL}_services.sh"
-ENTRYPOINT_REL_SERVICES_FILE="scripts/${ENTRYPOINT_SERVICES_FILE}"
-ENTRYPOINT_ABS_SERVICES_FILE="${PROJECT_DIR}/${ENTRYPOINT_REL_SERVICES_FILE}"
+echo "Source: $SOURCE_DIR, target: $TARGET_DIR"
 
-mkdir -p "${PROJECT_DIR}"
-rsync -avzP "${SOURCE_DIR}/" "${PROJECT_DIR}/"
-
-echo >> "${PROJECT_DIR}/config/script_params.sh"
-echo "DOCKER_IMAGE_NAME=\"${IMAGE_NAME}\"" >> "${PROJECT_DIR}/config/script_params.sh"
-echo "DOCKER_CONTAINER_NAME=\"${CONTAINER_NAME}\"" >> "${PROJECT_DIR}/config/script_params.sh"
-
-echo >> "${PROJECT_DIR}/config/build_params.sh"
-echo "DOCKER_CONTAINER_HOSTNAME=\"${IMAGE_NAME_TAIL}\"" >> "${PROJECT_DIR}/config/build_params.sh"
-
-mkdir -p "${PROJECT_DIR}/scripts"
-touch "${ENTRYPOINT_ABS_FILE}"
-touch "${ENTRYPOINT_ABS_SERVICES_FILE}"
-chmod +x "${ENTRYPOINT_ABS_FILE}"
-chmod +x "${ENTRYPOINT_ABS_SERVICES_FILE}"
-
-echo "#!/usr/bin/env bash" > "${ENTRYPOINT_ABS_FILE}"
-echo ". /opt/docker-scripts/entrypoint_${IMAGE_NAME_TAIL}_services.sh" >> "${ENTRYPOINT_ABS_FILE}"
-echo ". /opt/docker-scripts/entrypoint_common-daemon.sh" >> "${ENTRYPOINT_ABS_FILE}"
-
-echo "#!/usr/bin/env bash" > "${ENTRYPOINT_ABS_SERVICES_FILE}"
-echo ". /opt/docker-scripts/entrypoint_${PARENT_IMAGE_TAIL}_services.sh" >> "${ENTRYPOINT_ABS_SERVICES_FILE}"
-
-DOCKERFILE="${PROJECT_DIR}/Dockerfile"
-touch "${DOCKERFILE}"
-echo "FROM ${PARENT_IMAGE_NAME}:${PARENT_IMAGE_TAG}" > "${DOCKERFILE}"
-echo "COPY ${ENTRYPOINT_REL_FILE} /opt/docker-scripts/" >> "${DOCKERFILE}"
-echo "COPY ${ENTRYPOINT_REL_SERVICES_FILE} /opt/docker-scripts/" >> "${DOCKERFILE}"
-echo "ARG SSH_USER" >> "${DOCKERFILE}"
-echo "ARG SSH_PASSWORD" >> "${DOCKERFILE}"
-echo "RUN if [[ \"\" == \$(id -u \"\${SSH_USER}\") ]]; then useradd \"\$SSH_USER\" --shell /bin/bash --create-home; fi" >> "${DOCKERFILE}"
-echo "RUN echo \"\${SSH_USER}:\${SSH_PASSWORD}\" | chpasswd" >> "${DOCKERFILE}"
-echo "RUN gpasswd -a \"\$SSH_USER\" sudo" >> "${DOCKERFILE}"
-echo "ENTRYPOINT exec /bin/bash -C '/opt/docker-scripts/${ENTRYPOINT_FILE}';" >> "${DOCKERFILE}"
-
-echo "Project ${IMAGE_NAME} initialized."
+DIRS=(ctl config scripts data)
+for i in "${DIRS[@]}"
+do
+    mkdir -p "${TARGET_DIR}/${i}"
+    rsync -avzP "${SOURCE_DIR}/${i}/" "${TARGET_DIR}/${i}/"
+done
